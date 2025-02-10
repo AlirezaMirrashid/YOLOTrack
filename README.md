@@ -18,41 +18,35 @@ This repository demonstrates a video processing pipeline that uses **YOLO** (via
 1. **Clone the repository:**
 
    ```bash
-   git clone https://github.com/yourusername/YOLO-DeepSORT-Tracker.git
-   cd YOLO-DeepSORT-Tracker
-Create a virtual environment (optional but recommended):
+   git clone https://github.com/AlirezaMirrashid/YOLOTrack.git
+   cd YOLOTrack
 
+2. **Create a virtual environment (optional but recommended):**
 
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-Install the required packages:
+   ```bash
+    python -m venv venv
+    source venv/bin/activate  # On Windows: venv\Scripts\activate
 
-Ensure you have pip installed, then run:
+3. **Install the required packages:**
 
-bash
-pip install -r requirements.txt
-A sample requirements.txt might include:
+   ```bash
+    pip install -r requirements.txt
 
-txt
-opencv-python
-torch
-ultralytics
-deep_sort_realtime
-(Adjust package versions as needed.)
+## Usage
 
-Usage
 Run the main script using Python. You can pass command-line arguments to select the video source, YOLO model weights, and the labels you wish to track.
 
 Example Commands
 Using your webcam (default index 0) and tracking cars:
 
-bash
-python your_script.py --video 0 --model yolo11n.pt --labels car
+   ```bash
+    python yolo_with_tracking.py --video 0 --model yolo11n.pt --labels car
+
 Using a video file and tracking multiple objects (e.g., cars and persons):
-
-bash
-
+   ```bash
+    python yolo_with_tracking.py --video 0 --model yolo11n.pt --labels car
 python your_script.py --video path/to/video.mp4 --model yolo11n.pt --labels car,person
+
 Command-Line Arguments
 --video: Path to a video file or camera index (default: 0 for webcam).
 --model: Path to the YOLO model weights file (default: yolo11n.pt).
@@ -67,6 +61,3 @@ The DeepSortTracker class converts the detections into the format required by De
 
 Display:
 The VideoProcessor class reads video frames, applies detection and tracking, and overlays bounding boxes, labels, detection confidences, and unique track IDs on the frame. Press q to exit.
-
-License
-This project is licensed under the MIT License.
