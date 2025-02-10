@@ -8,19 +8,24 @@ import argparse
 class YOLODetector:
     """
     YOLO Detector using a model from Ultralytics (e.g. yolov5s).
-    It detects objects in an image and filters out only cars.
+    It detects objects in an image and filters out only the specified labels.
     """
 
-    def __init__(self, model_weight='yolo11m.pt', device=None):
+    def __init__(self, model_weight='yolo11m.pt', device=None, track_labels=None):
         if device is None:
             device = 'cuda' if torch.cuda.is_available() else 'cpu'
-        # Load the YOLO model from torch hub
+        # Load the YOLO model
         self.model = YOLO(model_weight).to(device)
         self.device = device
+        # If no labels are specified, default to 'car'
+        if track_labels is None:
+            track_labels = ['car']
+        # Normalize labels to lowercase for case-insensitive matching
+        self.track_labels = [label.lower() for label in track_labels]
 
     def detect(self, frame):
         """
-        Perform detection on the frame and return a list of detections for cars.
+        Perform detection on the frame and return a list of detections for the specified labels.
         Each detection is a list:
             [x1, y1, x2, y2, confidence, label]
         """
@@ -32,12 +37,11 @@ class YOLODetector:
         clss = results.cls.tolist()
         filtered = []
         for box, conf, cls in zip(xyxys, confs, clss):
-
             x1, y1, x2, y2 = box
             # Get the class name from the model's names list
             label = self.model.names[int(cls)]
-            # Filter only car detections (adjust if your model uses a different label)
-            if label.lower() == 'car':
+            # Filter detections: only keep those with a label in the track list
+            if label.lower() in self.track_labels:
                 filtered.append([x1, y1, x2, y2, conf, label])
         return filtered
 
@@ -55,8 +59,7 @@ class DeepSortTracker:
     def update(self, detections, frame):
         """
         Update the tracker with the new detections.
-        The detections should be a list where each element is:
-            [x1, y1, x2, y2, confidence, label]
+        Each detection should be a list: [x1, y1, x2, y2, confidence, label].
         DeepSORT expects detections in the format:
             ([x, y, width, height], confidence, label)
         """
@@ -104,7 +107,7 @@ class VideoProcessor:
             if not ret:
                 break
 
-            # Detect objects (cars) in the frame
+            # Detect objects in the frame
             detections = self.detector.detect(frame)
             # Update the tracker with the current detections
             tracks = self.tracker.update(detections, frame)
@@ -115,30 +118,29 @@ class VideoProcessor:
                 if not track.is_confirmed():
                     continue
 
-                # Get the track's ID and bounding box
+                # Get the track's ID and bounding box.
                 track_id = track.track_id
                 # to_ltrb() returns bounding box as [left, top, right, bottom]
                 ltrb = track.to_ltrb()
                 bbox = list(map(int, ltrb))
 
-                # Some DeepSORT implementations provide detection confidence and class label
-                # via custom methods (adjust these if needed)
+                # Get detection confidence and label (if provided by DeepSORT)
                 conf = track.get_det_conf() if hasattr(track, 'get_det_conf') else 0.0
                 if conf is None:
                     conf = 0.0
-                label = track.get_class() if hasattr(track, 'get_class') else "car"
+                label = track.get_class() if hasattr(track, 'get_class') else "object"
 
                 # Draw bounding box and label text
                 cv2.rectangle(frame, (bbox[0], bbox[1]), (bbox[2], bbox[3]),
                               color=(0, 255, 0), thickness=4)
                 text = f"{label} {conf:.2f} ID:{track_id}"
-                font_scale = 1.0  # Increase from 0.5 to 1.0 (adjust as needed)
-                font_thickness = 2  # Increase text thickness
+                font_scale = 1.0  # Adjust as needed
+                font_thickness = 2  # Adjust as needed
                 cv2.putText(frame, text, (bbox[0], bbox[1] - 10),
                             cv2.FONT_HERSHEY_SIMPLEX, font_scale, (0, 255, 0), font_thickness)
 
             cv2.imshow("Object Detection and Tracking", frame)
-            # Press 'q' to exit
+            # Press 'q' to exit.
             if cv2.waitKey(delay) & 0xFF == ord('q'):
                 break
 
@@ -151,23 +153,25 @@ def main():
     parser.add_argument("--video", type=str, default="0",
                         help="Path to video file or camera index (default: 0)")
     parser.add_argument("--model", type=str, default="yolo11n.pt",
-                        help="YOLO model weight to use (default: ./yolo11n.pt)")
+                        help="YOLO model weight to use (default: yolo11n.pt)")
+    parser.add_argument("--labels", type=str, default="car",
+                        help="Comma-separated list of object labels to track (default: 'car')")
     args = parser.parse_args()
 
-    # Determine video source (int if webcam, else string path)
+    # Determine video source (integer if webcam, else string path)
     try:
         video_source = int(args.video)
     except ValueError:
         video_source = args.video
 
-    # Initialize detector (change model_name if needed; e.g., 'yolov5m', 'yolov5l', etc.)
-    detector = YOLODetector(model_weight=args.model)
+    # Process the labels argument (comma-separated list)
+    track_labels = [label.strip() for label in args.labels.split(",") if label.strip()]
 
-    # Initialize tracker based on arguments.
+    # Initialize detector with specified labels
+    detector = YOLODetector(model_weight=args.model, track_labels=track_labels)
+
+    # Initialize tracker (using DeepSORT)
     tracker = DeepSortTracker()
-
-    # Set the video source: 0 for webcam, or provide a path to a video file.
-    video_source = args.video  # Change to a filename like "video.mp4" if desired
 
     # Initialize and run the video processor.
     processor = VideoProcessor(video_source, detector, tracker)
