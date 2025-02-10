@@ -41,18 +41,14 @@ Using your webcam (default index 0) and tracking cars:
 
    ```bash
     python yolo_with_tracking.py --video 0 --model yolo11n.pt --labels car
-
-Using a video file and tracking multiple objects (e.g., cars and persons):
-   ```bash
-    python yolo_with_tracking.py --video 0 --model yolo11n.pt --labels car
-python your_script.py --video path/to/video.mp4 --model yolo11n.pt --labels car,person
+```
 
 Command-Line Arguments
 --video: Path to a video file or camera index (default: 0 for webcam).
 --model: Path to the YOLO model weights file (default: yolo11n.pt).
 --labels: Comma-separated list of object labels to track (default: car).
 
-How It Works
+## How It Works
 Detection:
 The YOLODetector class loads the YOLO model and processes each frame. It filters the detections to include only the labels specified by the user.
 
